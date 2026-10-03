@@ -1,3 +1,3 @@
 # Banking Data Engineering
 
-This is for Banking Analytics
+This is for Banking Analytics.
