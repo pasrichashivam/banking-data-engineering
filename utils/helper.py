@@ -29,8 +29,6 @@ class BatchControlHelper:
 
     
     def has_succeeded(self, batch_id: str, source_table: str) -> bool:
-        if not self.spark.catalog.tableExists(self.batch_control_table):
-            return False
         existing = self.spark.table(self.batch_control_table).filter(
             (f.col("batch_id") == batch_id)
             & (f.col("source_table") == source_table)
@@ -97,3 +95,12 @@ class BatchControlHelper:
             "last_ingestion_run_id": "source.last_ingestion_run_id",
         }).whenNotMatchedInsertAll().execute()
     
+    def reset_watermark(self, target_table: str, process_name:str) -> None:
+        DeltaTable.forName(self.spark, self.watermark_table).update(
+            condition=f"target.process_name = source.process_name AND target.table_name = source.table_name",
+            set={
+                "last_source_timestamp": f.lit('1900-01-01 00:00:00'),
+                "last_updated_at": f.current_timestamp()
+            },
+        )
+
