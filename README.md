@@ -1,11 +1,12 @@
 # Banking Data Engineering Pipeline
-
-An end-to-end banking data engineering pipeline built on Databricks using a medallion architecture (Bronze → Silver → ODS → DWH → Reporting). The pipeline ingests source data, transforms it through progressively cleaner layers, builds dimensional model tables, and produces 360-degree customer/account analytics — all orchestrated by a cascading Lakeflow Jobs hierarchy defined as a Declarative Automation Bundle (DAB).
+* An end-to-end banking data engineering pipeline built on Databricks using a medallion architecture (Bronze → Silver → ODS → DWH → Reporting). 
+* The pipeline ingests source data, transforms it through progressively cleaner layers, builds dimensional model tables, and produces 360-degree customer/account analytics .
+* Everything is orchestrated by a cascading Lakeflow Jobs hierarchy defined as a Declarative Automation Bundle (DAB).
 
 ---
 
 ## Table of Contents
-
+- [Source Data](#architecture-overview)
 - [Architecture Overview](#architecture-overview)
 - [Catalog & Schema Layout](#catalog--schema-layout)
 - [Bundle Structure](#bundle-structure)
@@ -18,16 +19,59 @@ An end-to-end banking data engineering pipeline built on Databricks using a meda
 - [Running the Pipeline](#running-the-pipeline)
 - [Configuration Parameters](#configuration-parameters)
 
----
-
 ## Architecture Overview
 
+<img src="./images/architecture.png" width="1200" height="800">
+
+
+### Execution Flow and Data Layers
 The pipeline follows a **medallion architecture** with the following data flow:
 
-```
-data_source  →  bronze  →  silver  →  ods  →  gold (DWH)  →  platinum (Reporting)
-                                                                       ↓
-                                                                360° Analysis
+```mermaid
+flowchart TD
+    Source["data_source<br/>8 operational tables"]
+    Bronze["Bronze<br/>Raw ingestion + audit columns"]
+    Silver["Silver<br/>Clean, deduplicate"]
+    ODS["ODS<br/>Conformed business tables"]
+    Gold["Gold / DWH<br/>Facts, dimensions SCD-2, bridges"]
+    Platinum["Platinum<br/>Governed reporting datasets"]
+    Analytics["Account 360 and Customer 360<br/>Analytics views"]
+    ODSReports["ODS-level reports"]
+    Metadata[("metadata<br/>Registry, parameters,<br/>batch control, watermarks")]
+
+    Master["banking_master_job"] --> BronzeJob["bronze_layer"]
+    BronzeJob --> Source
+    Source --> Bronze
+    Bronze --> SilverJob["silver_layer"]
+    SilverJob --> Silver
+    Silver --> ODSJob["ods_layer"]
+    ODSJob --> ODS
+    ODS --> DWHJob["dwh_layer"]
+    ODS --> ODSReports
+    DWHJob --> Gold
+    Gold --> ReportingJob["reporting_layer"]
+    Gold --> AnalysisJob["analysis_360_layer"]
+    ReportingJob --> Platinum
+    AnalysisJob --> Analytics
+    Metadata -. table configuration, batch status, and watermarks .-> BronzeJob
+    Metadata -.-> SilverJob
+    Metadata -.-> ODSJob
+
+    classDef source fill:#d5f5e3,stroke:#1e8449,color:#17202a;
+    classDef bronze fill:#f5cba7,stroke:#a04000,color:#17202a;
+    classDef silver fill:#d6eaf8,stroke:#2874a6,color:#17202a;
+    classDef ods fill:#d5dbdb,stroke:#566573,color:#17202a;
+    classDef gold fill:#fcf3cf,stroke:#b7950b,color:#17202a;
+    classDef platinum fill:#e8daef,stroke:#7d3c98,color:#17202a;
+    classDef control fill:#fdedec,stroke:#c0392b,color:#17202a;
+
+    class Source source;
+    class Bronze bronze;
+    class Silver silver;
+    class ODS ods;
+    class Gold gold;
+    class Platinum,Analytics platinum;
+    class Metadata control;
 ```
 
 | Layer      | Schema        | Purpose                                                                   |
@@ -38,13 +82,12 @@ data_source  →  bronze  →  silver  →  ods  →  gold (DWH)  →  platinum 
 | ODS        | `ods`          | Operational data store — business-ready conformed tables                 |
 | DWH (Gold) | `gold`         | Dimensional model: fact tables, dimension tables, and bridge tables       |
 | Reporting  | `platinum`     | Governed reporting datasets with point-in-time metrics                    |
-| Analysis   | —              | Account 360 and Customer 360 views from DWH facts and dimensions          |
+| Analysis   | `platinum`     | Account 360 and Customer 360 views from DWH facts and dimensions          |
 | Metadata   | `metadata`     | Control tables: table registry, batch tracking, watermarks, parameters    |
 
 ### Source Tables
 
-The pipeline processes 8 source tables in `data_source`:
-
+`generate_banking_data.py` produces deterministic CSV extracts for the banking model described in belwo ER Diagram.
 1. `branch` — bank branch master data
 2. `customer_history` — customer records with SCD-2 history
 3. `account` — customer accounts
@@ -53,7 +96,18 @@ The pipeline processes 8 source tables in `data_source`:
 6. `transaction` — transaction headers
 7. `transaction_line` — transaction line items
 8. `daily_account_balance` — daily balance snapshots
+<img src="./images/er_diagram.png" width="1000" height="600">
 
+The initial extract contains source customer SCD history, branches, accounts, effective-dated account ownership, products, atomic transactions with product lines, and daily balance snapshots. This lets a pipeline build the following warehouse objects:
+Generate a historical initial load:
+
+```powershell
+python .\generate_banking_data.py initial --date 2024-12-31
+```
+Generate a daily incremental source batch:
+```powershell
+python .\generate_banking_data.py daily --date 2025-01-07
+```
 ---
 
 ## Catalog & Schema Layout
@@ -198,14 +252,6 @@ banking_master_job (resources/banking_master_job.yml)
 └── ods_report_layer   → notebook(03_ods_reports)            [after ods]
 ```
 
-### Execution Order
-
-```
-bronze_layer → silver_layer → ods_layer ┬→ dwh_layer ┬→ analysis_360_layer
-                                          │            └→ reporting_layer
-                                          └→ ods_report_layer
-```
-
 ---
 
 ## Batch Control & Watermarking
@@ -293,7 +339,6 @@ notebook_task:
 
 ### Prerequisites
 
-- Databricks CLI v0.218.0+ installed and configured
 - Appropriate permissions on the target workspace
 - Source data tables already created (run setup notebooks first)
 
@@ -312,13 +357,6 @@ databricks bundle deploy --target dev
 # Deploy to prod
 databricks bundle deploy --target prod
 ```
-
-### Override Variables at Deploy Time
-
-```bash
-databricks bundle deploy --target dev --var="processing_date=2025-01-15" --var="force_reload=true"
-```
-
 ---
 
 ## Running the Pipeline
@@ -326,13 +364,7 @@ databricks bundle deploy --target dev --var="processing_date=2025-01-15" --var="
 ### Via DAB
 
 ```bash
-databricks bundle run banking_master_job --target dev
-```
-
-### With Parameter Overrides
-
-```bash
-databricks bundle run banking_master_job --target dev --var="processing_date=2025-01-15"
+databricks bundle run banking_master_job --target dev --target dev --var="processing_date=2025-01-15"
 ```
 
 ### Via Databricks UI
@@ -361,18 +393,3 @@ All three jobs share these parameters (defaults come from bundle variables):
 2. **Parent job** passes `target_layer` to child via `run_job_task.job_parameters`
 3. **Child job** passes `table_metadata` to grandchild via for_each `{{input}}`
 4. **Notebooks** receive parameters as **widgets** (`dbutils.widgets.get`)
-
-### Notebook Widgets
-
-Each ingestion notebook defines these widgets:
-
-- `environment` (text)
-- `table_metadata` (text — JSON string)
-- `table_config` (text — JSON string)
-- `processing_date` (text)
-- `force_reload` (dropdown: true/false)
-
-DWH and reporting notebooks use:
-- `environment` (text)
-- `processing_date` (text)
-- `as_of_date`, `from_date`, `to_date` (text — reporting notebooks)

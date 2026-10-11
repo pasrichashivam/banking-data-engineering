@@ -1,0 +1,5 @@
+product_id,product_name,product_category,annual_fee
+P001,Checking Account,DEPOSIT,0.00
+P002,Savings Account,DEPOSIT,0.00
+P003,Debit Card,CARD,0.00
+P004,Overdraft Protection,SERVICE,35.00
