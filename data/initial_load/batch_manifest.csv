@@ -1,0 +1,2 @@
+batch_id,processing_date,load_type,generated_at_utc,transaction_record_count,late_arrival_record_count
+initial-20241231,2024-12-31,INITIAL,2026-09-25T23:14:03.576350+00:00,2928,0

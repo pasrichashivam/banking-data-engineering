@@ -1,0 +1,7 @@
+branch_id,branch_name,city,state,region,source_modified_at
+B001,Boston Central,Boston,MA,EAST,2024-01-01T08:00:00+00:00
+B002,Chicago West,Chicago,IL,CENTRAL,2024-01-01T08:00:00+00:00
+B003,Seattle North,Seattle,WA,WEST,2024-01-01T08:00:00+00:00
+B004,Miami Downtown,Miami,FL,EAST,2024-01-01T08:00:00+00:00
+B005,Dallas Uptown,Dallas,TX,CENTRAL,2024-01-01T08:00:00+00:00
+B006,Denver Central,Denver,CO,WEST,2024-01-01T08:00:00+00:00
