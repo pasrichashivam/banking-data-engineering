@@ -95,7 +95,7 @@ class BatchControlHelper:
             "last_ingestion_run_id": "source.last_ingestion_run_id",
         }).whenNotMatchedInsertAll().execute()
     
-    def reset_watermark(self, target_table: str, process_name:str) -> None:
+    def reset_watermark(self, target_table: str, process_name:str):
         DeltaTable.forName(self.spark, self.watermark_table).update(
             condition=f"target.process_name = source.process_name AND target.table_name = source.table_name",
             set={
