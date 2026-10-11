@@ -51,7 +51,7 @@ resources:
         # --- Step 1: Get table-specific configuration ---
         - task_key: get_table_configurations
           notebook_task:
-            notebook_path: ../src/02_source_to_bronze/02_table_configuration
+            notebook_path: ../src/02_source_to_bronze/02_table_configuration.ipynb
           # Output: values.table_config (dict with column mappings, filters, etc.)
 
         # --- Step 2: Conditional routing based on target_layer ---
@@ -71,7 +71,7 @@ resources:
             - task_key: conditional_bronze_layer
               outcome: "true"
           notebook_task:
-            notebook_path: ../src/03_ods_layer/01_bronze_to_silver
+            notebook_path: ../src/03_ods_layer/01_bronze_to_silver.ipynb
             base_parameters:
               # Passes the table config from step 1 to the ingestion notebook
               table_config: "{{tasks.get_table_configurations.values.table_config}}"
@@ -92,7 +92,7 @@ resources:
             - task_key: conditional_silver_layer
               outcome: "true"
           notebook_task:
-            notebook_path: ../src/02_source_to_bronze/03_source_to_bronze
+            notebook_path: ../src/02_source_to_bronze/03_source_to_bronze.ipynb
             base_parameters:
               table_config: "{{tasks.get_table_configurations.values.table_config}}"
 
