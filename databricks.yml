@@ -1,0 +1,48 @@
+bundle:
+  name: "banking-data-engineering"
+
+include:
+  - resources/*.yml
+  - resources/*/*.yml
+
+# ── Variables: configurable across targets (dev / prod) ──
+# These are referenced in resource YAMLs via ${var.<name>}
+variables:
+  environment:
+    description: Deployment environment (dev, prod)
+    default: dev
+  force_reload:
+    description: Whether to force a full reload of all tables
+    default: "false"
+  processing_date:
+    description: Processing date for the pipeline run (YYYY-MM-DD)
+    default: "2024-12-31"
+
+# ── Sync: only sync notebook directories referenced by jobs ──
+# The resources/ folder contains only DAB config YAML and is not deployed.
+sync:
+  include:
+    - "src/"
+  exclude:
+    - "resources/"
+
+targets:
+  # The 'dev' target, for development purposes. This target is the default.
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://dbc-9b266851-0bc5.cloud.databricks.com
+    variables:
+      environment: dev
+
+  # The 'prod' target, used for production deployment.
+  prod:
+    mode: production
+    workspace:
+      host: https://dbc-9b266851-0bc5.cloud.databricks.com
+      root_path: /Users/pasrichashivam@gmail.com/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      environment: prod
+    run_as:
+      user_name: pasrichashivam@gmail.com

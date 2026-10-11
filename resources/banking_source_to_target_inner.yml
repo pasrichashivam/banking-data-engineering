@@ -1,0 +1,110 @@
+# =============================================================================
+# banking_source_to_target_inner  (Grandchild Job — per-table ingestion logic)
+# =============================================================================
+# Called once per table by banking_source_to_target's for_each loop.
+# Reads table-specific configuration, then conditionally routes to the
+# correct ingestion notebook based on the `target_layer` parameter:
+#   bronze  → source_to_bronze_ingestion  (01_bronze_to_silver notebook)
+#   silver  → bronze_to_silver_ingestion  (03_source_to_bronze notebook)
+#   ods     → (conditional_ods_layer — no ingestion task defined yet)
+#
+# Hierarchy:
+#   banking_source_to_target_inner
+#     ├── get_table_configurations   → notebook(02_table_configuration)
+#     ├── conditional_bronze_layer   → condition(target_layer == bronze)
+#     │     └── source_to_bronze_ingestion  → notebook(01_bronze_to_silver)
+#     ├── conditional_silver_layer  → condition(target_layer == silver)
+#     │     └── bronze_to_silver_ingestion  → notebook(03_source_to_bronze)
+#     └── conditional_ods_layer      → condition(target_layer == ods)
+# =============================================================================
+
+resources:
+  jobs:
+    banking_source_to_target_inner:
+      name: banking_source_to_target_inner
+
+      # ── Job-level parameters ──
+      # `table_metadata` is injected per-table by the parent's for_each loop.
+      # `target_layer` determines which conditional branch executes.
+      parameters:
+        - name: environment
+          default: ${var.environment}
+        - name: force_reload
+          default: ${var.force_reload}
+        - name: processing_date
+          default: ${var.processing_date}
+        - name: target_layer
+          default: bronze   # bronze | silver | ods
+        - name: table_metadata
+          default: ""       # JSON string — one table's metadata from the for_each loop
+
+      # ── Job settings ──
+      max_concurrent_runs: 4
+      queue:
+        enabled: true
+      performance_target: PERFORMANCE_OPTIMIZED
+      tags:
+        training: "false"
+
+      # ── Tasks ──
+      tasks:
+        # --- Step 1: Get table-specific configuration ---
+        - task_key: get_table_configurations
+          notebook_task:
+            notebook_path: ../src/02_source_to_bronze/02_table_configuration
+          # Output: values.table_config (dict with column mappings, filters, etc.)
+
+        # --- Step 2: Conditional routing based on target_layer ---
+
+        # Branch A: target_layer == bronze
+        - task_key: conditional_bronze_layer
+          depends_on:
+            - task_key: get_table_configurations
+          condition_task:
+            op: EQUAL_TO
+            left: "{{job.parameters.target_layer}}"
+            right: bronze
+
+        # Bronze ingestion notebook (runs only if conditional_bronze_layer is true)
+        - task_key: source_to_bronze_ingestion
+          depends_on:
+            - task_key: conditional_bronze_layer
+              outcome: "true"
+          notebook_task:
+            notebook_path: ../src/03_ods_layer/01_bronze_to_silver
+            base_parameters:
+              # Passes the table config from step 1 to the ingestion notebook
+              table_config: "{{tasks.get_table_configurations.values.table_config}}"
+
+        # Branch B: target_layer != bronze → check if silver
+        - task_key: conditional_silver_layer
+          depends_on:
+            - task_key: conditional_bronze_layer
+              outcome: "false"
+          condition_task:
+            op: EQUAL_TO
+            left: "{{job.parameters.target_layer}}"
+            right: silver
+
+        # Silver ingestion notebook (runs only if conditional_silver_layer is true)
+        - task_key: bronze_to_silver_ingestion
+          depends_on:
+            - task_key: conditional_silver_layer
+              outcome: "true"
+          notebook_task:
+            notebook_path: ../src/02_source_to_bronze/03_source_to_bronze
+            base_parameters:
+              table_config: "{{tasks.get_table_configurations.values.table_config}}"
+
+        # Branch C: target_layer != bronze AND != silver → check if ods
+        - task_key: conditional_ods_layer
+          depends_on:
+            - task_key: conditional_silver_layer
+              outcome: "false"
+          condition_task:
+            op: EQUAL_TO
+            left: "{{job.parameters.target_layer}}"
+            right: ods
+          # NOTE: No ODS ingestion notebook task is defined yet.
+          # When target_layer == ods, this condition evaluates to true,
+          # but there is no downstream ingestion task attached.

@@ -1,0 +1,66 @@
+# =============================================================================
+# banking_source_to_target  (Child Job — generic source-to-layer ingestion)
+# Source job ID: 42446123088887
+# =============================================================================
+# Called by banking_master_job three times with target_layer = bronze | silver | ods.
+# Reads the source table metadata, then fans out (for_each, concurrency 4) to
+# the grandchild job `banking_source_to_target_inner`, passing per-table metadata.
+#
+# Hierarchy:
+#   banking_source_to_target
+#     ├── get_source_table_metadata  → notebook(01_read_tables_list)
+#     └── ingest_table_source_to_silver  (for_each, concurrency 4)
+#           └── ingest_table_source_to_target_iteration
+#                 → run_job(banking_source_to_target_inner, table_metadata={{input}})
+# =============================================================================
+
+resources:
+  jobs:
+    banking_source_to_target:
+      name: banking_source_to_target
+
+      # ── Job-level parameters ──
+      # `target_layer` is the key parameter — set by the parent job's run_job_task.
+      parameters:
+        - name: environment
+          default: ${var.environment}
+        - name: force_reload
+          default: ${var.force_reload}
+        - name: processing_date
+          default: ${var.processing_date}
+        - name: target_layer
+          default: bronze   # bronze | silver | ods
+
+      # ── Job settings ──
+      max_concurrent_runs: 4   # allows bronze/silver/ods to overlap if needed
+      queue:
+        enabled: true
+      performance_target: PERFORMANCE_OPTIMIZED
+      tags:
+        training: "false"
+
+      # ── Tasks ──
+      tasks:
+        # --- Step 1: Read the list of source tables to process ---
+        - task_key: get_source_table_metadata
+          notebook_task:
+            notebook_path: ../src/02_source_to_bronze/01_read_tables_list
+          # Output: values.tables_metadata (array of per-table metadata dicts)
+          # This output feeds the for_each loop below.
+
+        # --- Step 2: For each table, call the inner job to ingest source → target ---
+        - task_key: ingest_table_source_to_silver
+          depends_on:
+            - task_key: get_source_table_metadata
+          for_each_task:
+            inputs: "{{tasks.get_source_table_metadata.values.tables_metadata}}"
+            concurrency: 4
+            task:
+              task_key: ingest_table_source_to_target_iteration
+              run_job_task:
+                job_id: ${resources.jobs.banking_source_to_target_inner.id}
+                job_parameters:
+                  # {{input}} is the current iteration's table metadata dict
+                  table_metadata: "{{input}}"
+                  # target_layer is passed through from this job's parameters
+                  target_layer: "{{job.parameters.target_layer}}"
