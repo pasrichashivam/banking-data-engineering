@@ -1,6 +1,6 @@
 # Banking Data Engineering Pipeline
 
-An end-to-end banking data engineering pipeline built on Databricks using a medallion architecture (Bronze → Silver → ODS → DWH → Reporting). The pipeline ingests source data, transforms it through progressively cleaner layers, builds dimensional model tables, and produces 360-degree customer/account analytics — all orchestrated by a cascading Lakeflow Jobs hierarchy defined as a Declarative Automation Bundle (DAB).
+A Databricks Lakehouse solution for ingesting, transforming, and analyzing banking data across a medallion architecture—from raw operational feeds to governed reporting and 360° customer/account insights.
 
 ---
 
