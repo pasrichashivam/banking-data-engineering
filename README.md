@@ -350,13 +350,24 @@ databricks bundle validate --strict --target dev
 
 ### Deploy
 
-```bash
-# Deploy to dev (default target)
-databricks bundle deploy --target dev
+**1. CICD via GitHub Actions**
+  Deployment is automated through the [GitHub Actions workflow](./.github/workflows/deployment.yml):
 
-# Deploy to prod
-databricks bundle deploy --target prod
+  1. Push the approved changes to the `main` branch.
+  2. GitHub Actions checks out the repository and installs the Databricks CLI.
+  3. The workflow deploys the Databricks Asset Bundle to the `prod` target using the `SP_TOKEN` repository secret.
+  4. Verify the deployed Lakeflow Jobs in the Databricks workspace.
+  <img src="./images/deploy.png" width="700" height="400">
+
+**2. Databricks CLI Terminal**
+  ```bash
+  # Deploy to dev (default target)
+  databricks bundle deploy --target dev
 ```
+```bash
+  # Deploy to prod
+  databricks bundle deploy --target prod
+  ```
 ---
 
 ## Running the Pipeline
