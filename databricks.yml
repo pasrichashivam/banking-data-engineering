@@ -1,4 +1,3 @@
-# Declarative Automation Bundle configuration, more info here: https://docs.databricks.com/en/dev-tools/bundles/settings.html
 bundle:
   name: "banking-data-engineering"
 
@@ -42,11 +41,8 @@ targets:
     mode: production
     workspace:
       host: https://dbc-9b266851-0bc5.cloud.databricks.com
-      # We always use /Users/pasrichashivam@gmail.com for all resources to make sure we only have a single copy.
       root_path: /Users/pasrichashivam@gmail.com/.bundle/${bundle.name}/${bundle.target}
     variables:
       environment: prod
     run_as:
-      # This runs as pasrichashivam@gmail.com in production. We could also use a service principal here,
-      # see https://docs.databricks.com/dev-tools/bundles/permissions.html.
       user_name: pasrichashivam@gmail.com
