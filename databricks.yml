@@ -29,7 +29,8 @@ sync:
 targets:
   # The 'dev' target, for development purposes. This target is the default.
   dev:
-    mode: development
+    presets:
+      name_prefix: dev_
     default: true
     workspace:
       host: https://dbc-9b266851-0bc5.cloud.databricks.com
@@ -39,6 +40,8 @@ targets:
   # The 'prod' target, used for production deployment.
   prod:
     mode: production
+    presets:
+      name_prefix: prod_
     workspace:
       host: https://dbc-9b266851-0bc5.cloud.databricks.com
       root_path: /Users/pasrichashivam@gmail.com/.bundle/${bundle.name}/${bundle.target}
