@@ -28,11 +28,11 @@ resources:
       # `target_layer` determines which conditional branch executes.
       parameters:
         - name: environment
-          default: dev
+          default: ${var.environment}
         - name: force_reload
-          default: "false"
+          default: ${var.force_reload}
         - name: processing_date
-          default: "2024-12-31"
+          default: ${var.processing_date}
         - name: target_layer
           default: bronze   # bronze | silver | ods
         - name: table_metadata
@@ -51,8 +51,7 @@ resources:
         # --- Step 1: Get table-specific configuration ---
         - task_key: get_table_configurations
           notebook_task:
-            notebook_path: /Workspace/Users/pasrichashivam@gmail.com/dev-banking-data-engineering/02_source_to_bronze/02_table_configuration
-            source: WORKSPACE
+            notebook_path: ../src/02_source_to_bronze/02_table_configuration
           # Output: values.table_config (dict with column mappings, filters, etc.)
 
         # --- Step 2: Conditional routing based on target_layer ---
@@ -72,8 +71,7 @@ resources:
             - task_key: conditional_bronze_layer
               outcome: "true"
           notebook_task:
-            notebook_path: /Workspace/Users/pasrichashivam@gmail.com/dev-banking-data-engineering/03_ods_layer/01_bronze_to_silver
-            source: WORKSPACE
+            notebook_path: ../src/03_ods_layer/01_bronze_to_silver
             base_parameters:
               # Passes the table config from step 1 to the ingestion notebook
               table_config: "{{tasks.get_table_configurations.values.table_config}}"
@@ -94,8 +92,7 @@ resources:
             - task_key: conditional_silver_layer
               outcome: "true"
           notebook_task:
-            notebook_path: /Workspace/Users/pasrichashivam@gmail.com/dev-banking-data-engineering/02_source_to_bronze/03_source_to_bronze
-            source: WORKSPACE
+            notebook_path: ../src/02_source_to_bronze/03_source_to_bronze
             base_parameters:
               table_config: "{{tasks.get_table_configurations.values.table_config}}"
 

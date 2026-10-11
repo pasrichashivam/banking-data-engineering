@@ -23,11 +23,11 @@ resources:
       # `target_layer` is the key parameter — set by the parent job's run_job_task.
       parameters:
         - name: environment
-          default: dev
+          default: ${var.environment}
         - name: force_reload
-          default: "false"
+          default: ${var.force_reload}
         - name: processing_date
-          default: "2024-12-31"
+          default: ${var.processing_date}
         - name: target_layer
           default: bronze   # bronze | silver | ods
 
@@ -44,8 +44,7 @@ resources:
         # --- Step 1: Read the list of source tables to process ---
         - task_key: get_source_table_metadata
           notebook_task:
-            notebook_path: /Workspace/Users/pasrichashivam@gmail.com/dev-banking-data-engineering/02_source_to_bronze/01_read_tables_list
-            source: WORKSPACE
+            notebook_path: ../src/02_source_to_bronze/01_read_tables_list
           # Output: values.tables_metadata (array of per-table metadata dicts)
           # This output feeds the for_each loop below.
 

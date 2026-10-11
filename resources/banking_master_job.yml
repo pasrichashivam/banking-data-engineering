@@ -25,11 +25,11 @@ resources:
       # ── Job-level parameters ──
       parameters:
         - name: environment
-          default: dev
+          default: ${var.environment}
         - name: force_reload
-          default: "false"
+          default: ${var.force_reload}
         - name: processing_date
-          default: "2024-12-31"
+          default: ${var.processing_date}
 
       # ── Job settings ──
       max_concurrent_runs: 1
@@ -71,29 +71,25 @@ resources:
           depends_on:
             - task_key: ods_layer
           notebook_task:
-            notebook_path: /Workspace/Users/pasrichashivam@gmail.com/dev-banking-data-engineering/04_dwh_layer/01_dwh_tables
-            source: WORKSPACE
+            notebook_path: ../src/04_dwh_layer/01_dwh_tables
 
         # --- Layer 5a: 360-degree analysis (depends on DWH) ---
         - task_key: analysis_360_layer
           depends_on:
             - task_key: dwh_layer
           notebook_task:
-            notebook_path: /Workspace/Users/pasrichashivam@gmail.com/dev-banking-data-engineering/04_dwh_layer/04_analysis_360_degree
-            source: WORKSPACE
+            notebook_path: ../src/04_dwh_layer/04_analysis_360_degree
 
         # --- Layer 5b: Reporting tables (depends on DWH) ---
         - task_key: reporting_layer
           depends_on:
             - task_key: dwh_layer
           notebook_task:
-            notebook_path: /Workspace/Users/pasrichashivam@gmail.com/dev-banking-data-engineering/04_dwh_layer/03_reporting_tables
-            source: WORKSPACE
+            notebook_path: ../src/04_dwh_layer/03_reporting_tables
 
         # --- Layer 5c: ODS reports (depends on ODS) ---
         - task_key: ods_report_layer
           depends_on:
             - task_key: ods_layer
           notebook_task:
-            notebook_path: /Workspace/Users/pasrichashivam@gmail.com/dev-banking-data-engineering/03_ods_layer/03_ods_reports
-            source: WORKSPACE
+            notebook_path: ../src/03_ods_layer/03_ods_reports
